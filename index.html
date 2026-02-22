@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- App 專屬設定開始 (PWA Meta Tags) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="搜搜穿搭">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#f8fafc">
+    <!-- 設定手機桌面上的 App 圖示 -->
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3159/3159614.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3159/3159614.png">
+    <!-- App 專屬設定結束 -->
+
+    <title>搜搜穿搭</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
+            min-height: 100vh;
+            /* 防止在手機 App 模式下產生橡皮筋滾動效果 */
+            overscroll-behavior-y: none; 
+        }
+        
+        .clean-panel {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02);
+        }
+
+        .upload-zone {
+            border: 1px dashed #cbd5e1;
+            background-color: #f8fafc;
+            transition: all 0.2s ease;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #64748b;
+            background-color: #f1f5f9;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .loading-dots:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60% { content: '...'; } 80%, 100% { content: ''; } }
+        
+        .history-card { transition: all 0.2s ease; border: 1px solid #e2e8f0; }
+        .history-card:hover { border-color: #94a3b8; background-color: #f8fafc; transform: translateX(2px); }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <header class="mb-10 mt-4 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-6">
+            <div>
+                <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
+                    <i class="fa-solid fa-layer-group text-slate-400 mr-3 text-2xl"></i>搜搜穿搭
+                </h1>
+                <p class="text-slate-500 text-sm md:text-base">全網同款比價・運費換算・智慧導購</p>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Column: Input & Results -->
+            <div class="lg:col-span-8 space-y-6">
+                
+                <!-- Input Section -->
+                <div class="clean-panel p-6 md:p-8">
+                    <h2 class="text-lg font-bold mb-5 flex items-center text-slate-800">
+                        <span class="bg-slate-100 text-slate-500 w-7 h-7 rounded-md flex items-center justify-center mr-3 text-xs border border-slate-200">1</span>
+                        上傳穿搭影像
+                    </h2>
+                    
+                    <!-- 圖片上傳區塊 -->
+                    <div id="dropZone" class="upload-zone rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[220px]" onclick="document.getElementById('fileInput').click()">
+                        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                        
+                        <!-- 尚未選擇圖片時的提示 -->
+                        <div id="uploadPrompt" class="space-y-3 pointer-events-none">
+                            <i class="fa-regular fa-image text-4xl text-slate-300"></i>
+                            <p class="text-slate-600 font-medium">點擊上傳，或 <kbd class="bg-white border border-slate-200 shadow-sm px-2 py-1 rounded text-xs mx-1 font-mono">Ctrl+V</kbd> 貼上截圖</p>
+                            <p class="text-xs text-slate-400">支援 JPG, PNG 格式</p>
+                        </div>
+
+                        <!-- 圖片預覽區 -->
+                        <div id="imagePreviewContainer" class="hidden w-full relative">
+                            <img id="imagePreview" class="max-h-64 mx-auto rounded-md shadow-sm object-contain border border-slate-200" src="" alt="預覽圖片">
+                            <button onclick="clearImage(event)" class="absolute top-2 right-2 bg-white text-slate-600 border border-slate-200 rounded-full w-8 h-8 flex items-center justify-center hover:bg-slate-100 transition-colors shadow-sm">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 補充文字描述 (選填) -->
+                    <div class="mt-4">
+                        <input type="text" id="userInputText" class="w-full p-3.5 bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-400 focus:border-slate-400 outline-none transition-all text-sm placeholder-slate-400" placeholder="（選填）想特別找哪件單品？例如：黑色西裝外套...">
+                    </div>
+
+                    <button id="analyzeBtn" onclick="startAnalysis()" class="mt-5 w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 px-6 rounded-lg transition-colors flex justify-center items-center shadow-sm">
+                        <i class="fa-solid fa-magnifying-glass mr-2 text-sm opacity-80"></i> <span id="btnText">開始搜尋同款</span>
+                    </button>
+                </div>
+
+                <!-- Result Section -->
+                <div class="clean-panel p-6 md:p-8 min-h-[400px] flex flex-col">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <h2 class="text-lg font-bold flex items-center text-slate-800">
+                            <span class="bg-slate-100 text-slate-500 w-7 h-7 rounded-md flex items-center justify-center mr-3 text-xs border border-slate-200">2</span>
+                            分析報告
+                        </h2>
+                        <span id="autoSaveIndicator" class="hidden text-slate-500 font-medium text-xs flex items-center bg-slate-50 px-2.5 py-1.5 rounded-md border border-slate-200">
+                            <i class="fa-solid fa-check mr-1.5"></i> 已自動分類儲存
+                        </span>
+                    </div>
+                    
+                    <div id="resultArea" class="flex-grow prose prose-slate max-w-none text-slate-600 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
+                        <div class="h-full flex flex-col items-center justify-center text-slate-300 py-12">
+                            <i class="fa-solid fa-barcode text-4xl mb-4 font-light opacity-50"></i>
+                            <p class="text-sm font-medium text-slate-400">等待載入影像進行分析</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: History -->
+            <div class="lg:col-span-4">
+                <div class="clean-panel p-6 h-full flex flex-col max-h-[850px]">
+                    <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                        <h2 class="text-lg font-bold flex items-center text-slate-800">
+                            衣櫥分類紀錄
+                        </h2>
+                        <div class="space-x-2">
+                            <button onclick="resetApiKey()" class="text-xs text-slate-400 hover:text-blue-500 transition-colors font-medium">
+                                <i class="fa-solid fa-key mr-1"></i>重設金鑰
+                            </button>
+                            <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-red-500 transition-colors font-medium">
+                                清空全部
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="historyList" class="flex-grow overflow-y-auto custom-scrollbar pr-2">
+                        <!-- History items injected here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // ✅ 全新防呆機制：自動從網頁瀏覽器記憶體讀取金鑰，完全不用改程式碼！
+        let apiKey = localStorage.getItem('gemini_api_key') || "";
+        let currentAnalysisResult = "";
+        let selectedImageBase64 = null;
+        let selectedImageMimeType = null;
+
+        // 檢查並獲取金鑰的函數
+        function checkAndGetApiKey() {
+            if (!apiKey || !apiKey.startsWith("AIzaSy")) {
+                const userInput = prompt("🔑 【首次使用設定】\n\n請貼上您的 Google Gemini API 金鑰 (必須以 AIzaSy 開頭)：\n\n(金鑰會安全地儲存在您的手機/電腦瀏覽器中)");
+                
+                if (userInput && userInput.trim().startsWith("AIzaSy")) {
+                    apiKey = userInput.trim();
+                    localStorage.setItem('gemini_api_key', apiKey); // 存入瀏覽器記憶體
+                    return true;
+                } else {
+                    alert("⛔ 錯誤：您沒有輸入金鑰，或者金鑰格式錯誤（必須以 AIzaSy 開頭）。\n請重新點擊「開始搜尋」來設定！");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // 重設金鑰的函數
+        function resetApiKey() {
+            if (confirm("確定要清除目前儲存的 API 金鑰嗎？\n清除後，下次搜尋時系統會重新要求您輸入。")) {
+                localStorage.removeItem('gemini_api_key');
+                apiKey = "";
+                alert("✅ 金鑰已清除成功！");
+            }
+        }
+
+        // --- Image Handling Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderHistory();
+
+            // Handle Paste Events (Ctrl+V)
+            window.addEventListener('paste', e => {
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (let index in items) {
+                    const item = items[index];
+                    if (item.kind === 'file' && item.type.includes('image/')) {
+                        const blob = item.getAsFile();
+                        processImageFile(blob);
+                    }
+                }
+            });
+
+            const dropZone = document.getElementById('dropZone');
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    processImageFile(e.dataTransfer.files[0]);
+                }
+            });
+        });
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) processImageFile(file);
+        }
+
+        function processImageFile(file) {
+            if (!file.type.match('image.*')) {
+                alert("請上傳圖片檔案！"); return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                selectedImageBase64 = e.target.result.split(',')[1];
+                selectedImageMimeType = file.type;
+                
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                document.getElementById('uploadPrompt').classList.add('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearImage(event) {
+            event.stopPropagation();
+            selectedImageBase64 = null;
+            selectedImageMimeType = null;
+            document.getElementById('fileInput').value = "";
+            document.getElementById('imagePreviewContainer').classList.add('hidden');
+            document.getElementById('uploadPrompt').classList.remove('hidden');
+            document.getElementById('imagePreview').src = "";
+        }
+
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        
+        async function fetchWithRetry(url, options, maxRetries = 5) {
+            const delays = [1000, 2000, 4000, 8000, 16000];
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        const errData = await response.json().catch(() => ({}));
+                        throw new Error(errData.error?.message || `HTTP error! status: ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error;
+                    await sleep(delays[i]);
+                }
+            }
+        }
+
+        async function startAnalysis() {
+            // 每次搜尋前，確保已經設定好金鑰！
+            if (!checkAndGetApiKey()) {
+                return; 
+            }
+
+            if (!selectedImageBase64) {
+                alert("請先上傳或貼上衣服的圖片！");
+                return;
+            }
+
+            const inputText = document.getElementById('userInputText').value.trim();
+            const btnText = document.getElementById('btnText');
+            const resultArea = document.getElementById('resultArea');
+            const autoSaveIndicator = document.getElementById('autoSaveIndicator');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            analyzeBtn.disabled = true;
+            analyzeBtn.classList.add('opacity-75', 'cursor-not-allowed');
+            btnText.innerHTML = `正在執行全網檢索<span class="loading-dots"></span>`;
+            if (autoSaveIndicator) autoSaveIndicator.classList.add('hidden');
+            resultArea.innerHTML = `
+                <div class="h-full flex flex-col items-center justify-center text-slate-500 py-10">
+                    <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-slate-300"></i>
+                    <p class="text-sm">系統正在比對電商資料與計算運費...</p>
+                </div>`;
+
+            let promptText = `
+                你現在是一位專業的時尚買手與網購達人。請仔細觀察使用者上傳的這張穿搭圖片。
+            `;
+            if (inputText) {
+                promptText += `使用者特別交代：『${inputText}』。請特別關注使用者提到的部分。\n`;
+            }
+
+            promptText += `
+                請拆解圖片中最主要的「穿搭單品」，並尋找實際的購買管道與比價。
+                請嚴格使用繁體中文，並依照以下格式條列輸出：
+
+                🌟 【整體風格】
+                （用一句話總結這套穿搭的風格，如：日系透明感、Y2K辣妹風、韓系極簡等）
+
+                --- 單品分析 ---
+                (針對圖片中 1-3 個明顯的單品，重複以下格式)
+
+                👗 【單品一：填寫單品種類，如 坑條針織毛衣】
+                - 🏷️ **系統分類**：[嚴格選一：長袖/短袖/外套/長褲/短褲/裙裝/鞋子/包包/配件]
+                - 💲 **最低台幣價格**：[填入純數字，為下方找到的最低台幣價格，例如 500]
+                - 🔍 **特徵描述**：(顏色、版型、材質、特殊設計)
+                - 🛍️ **推薦購買管道**：
+                   (提供 2-3 個「不同網站」的推薦搜尋字詞或可能販售的品牌網址，例如：UNIQLO, ZARA, 淘寶, Zozotown, ASOS 等)
+                   1. [網站/品牌名稱] - 預估價格：約 TWD [換算後的台幣價格] 元
+                      👉 預估運費：[若推薦網站為 Zozotown 等日網，務必標註「透過『樂淘』代購：預估日本境內運費+國際空運」。若是淘寶請估算集運費；台灣電商則估算國內運費]
+                      🔗 網址：[推測該品牌官網網址，或提供該電商的搜尋結果網址]
+                   2. [網站/品牌名稱] - 預估價格：約 TWD [換算後的台幣價格] 元
+                      👉 預估運費：[同上指示]
+                      🔗 網址：[推測該品牌官網網址，或提供該電商的搜尋結果網址]
+
+                ---
+                💸 【綜合建議】
+                （綜合上述找到的管道，給出購買建議：哪裡買最划算、包含「商品價格+運費」的整體總花費考量、品質考量等）
+            `;
+
+            const parts = [
+                { text: promptText },
+                {
+                    inlineData: {
+                        mimeType: selectedImageMimeType || "image/jpeg",
+                        data: selectedImageBase64
+                    }
+                }
+            ];
+
+            // 使用最穩定的 gemini-1.5-flash 模型
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const options = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: parts }]
+                })
+            };
+
+            try {
+                const data = await fetchWithRetry(url, options);
+                
+                if (data && data.candidates && data.candidates[0].content.parts[0].text) {
+                    currentAnalysisResult = data.candidates[0].content.parts[0].text;
+                    
+                    let formattedResult = currentAnalysisResult;
+                    
+                    formattedResult = formattedResult.replace(/(🌟 【整體風格】|👗 【單品.*?】|💡 【買手小建議】|💸 【綜合建議】)/g, '<h3 class="text-slate-800 font-bold text-base md:text-lg mt-6 mb-3 border-b border-slate-200 pb-2">$1</h3>');
+                    formattedResult = formattedResult.replace(/- 🏷️ \*\*系統分類\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">分類</span>$1</div>');
+                    formattedResult = formattedResult.replace(/- 💲 \*\*最低台幣價格\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">最低估價</span> NT$ <span class="text-slate-900 font-medium">$1</span></div>');
+                    formattedResult = formattedResult.replace(/- 🔍 \*\*特徵描述\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">特徵</span>$1</div>');
+                    formattedResult = formattedResult.replace(/- 🛍️ \*\*推薦購買管道\*\*：/g, '<div class="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4"><div class="text-slate-800 font-bold mb-3 text-sm flex items-center"><i class="fa-solid fa-cart-shopping mr-2 text-slate-400"></i>推薦購買管道</div>');
+                    formattedResult = formattedResult.replace(/👉 預估運費：/g, '<div class="text-slate-500 text-xs mt-1 mb-2 pl-1"><i class="fa-solid fa-truck-fast mr-1.5 opacity-70"></i>運費估算：');
+                    formattedResult = formattedResult.replace(/🔗 網址：\s*(https?:\/\/[^\s\n]+)/g, '</div><a href="$1" target="_blank" class="inline-flex items-center mt-2 mb-4 bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-md font-medium text-xs transition-colors no-underline"><i class="fa-solid fa-link mr-2 opacity-60"></i>前往查看商品</a><br>');
+                    formattedResult = formattedResult.replace(/---/g, '</div>');
+
+                    resultArea.innerHTML = `<div class="p-1">${formattedResult}</div>`;
+                    
+                    saveToHistory(true);
+                } else {
+                    throw new Error("無法獲取有效的解析內容");
+                }
+            } catch (error) {
+                console.error("API Error:", error);
+                
+                // 如果發生金鑰錯誤，自動提示重新設定
+                if(error.message.includes("API key not valid")) {
+                    localStorage.removeItem('gemini_api_key');
+                    apiKey = "";
+                    resultArea.innerHTML = `
+                        <div class="bg-red-50 border border-red-200 p-5 rounded-lg">
+                            <h3 class="text-red-600 font-bold mb-2 text-sm"><i class="fa-solid fa-triangle-exclamation mr-2"></i>API 金鑰錯誤</h3>
+                            <p class="text-slate-600 text-sm mb-3">您剛才輸入的金鑰無效或被系統阻擋了。</p>
+                            <button onclick="checkAndGetApiKey()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold">重新輸入金鑰</button>
+                        </div>`;
+                } else {
+                    resultArea.innerHTML = `
+                        <div class="bg-white border border-red-200 p-5 rounded-lg">
+                            <h3 class="text-red-600 font-bold mb-2 text-sm"><i class="fa-solid fa-triangle-exclamation mr-2"></i>系統提示</h3>
+                            <p class="text-slate-600 text-sm mb-3">錯誤原因：${error.message}</p>
+                        </div>`;
+                }
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.classList.remove('opacity-75', 'cursor-not-allowed');
+                btnText.innerHTML = `開始搜尋同款`;
+            }
+        }
+
+        // --- History Management ---
+        function saveToHistory(isAuto = false) {
+            if (!currentAnalysisResult) return;
+            
+            let title = "穿搭搜尋紀錄";
+            const lines = currentAnalysisResult.split('\n');
+            for (let line of lines) {
+                if (line.includes('單品一：')) {
+                    title = line.replace(/👗 【單品一：|】|\*\*/g, '').trim();
+                    break;
+                }
+            }
+            if (title.length > 20) title = title.substring(0, 20) + '...';
+
+            let category = "未分類";
+            const catMatch = currentAnalysisResult.match(/🏷️ \*\*系統分類\*\*：([^\n]+)/);
+            if (catMatch) {
+                category = catMatch[1].replace(/[\[\]]/g, '').trim();
+            }
+
+            let price = 999999;
+            const priceMatch = currentAnalysisResult.match(/💲 \*\*最低台幣價格\*\*：([^\n]+)/);
+            if (priceMatch) {
+                const priceStr = priceMatch[1].replace(/[^0-9]/g, ''); 
+                if (priceStr) price = parseInt(priceStr, 10);
+            }
+
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
+            historyArray.push({ 
+                id: Date.now(), 
+                title: title, 
+                category: category,
+                price: price,
+                content: currentAnalysisResult, 
+                date: new Date().toLocaleString('zh-TW', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12: false }) 
+            });
+
+            localStorage.setItem('fashionAppHistory', JSON.stringify(historyArray));
+            renderHistory();
+            
+            const autoSaveIndicator = document.getElementById('autoSaveIndicator');
+            if (autoSaveIndicator) {
+                autoSaveIndicator.classList.remove('hidden');
+            }
+        }
+
+        function renderHistory() {
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
+            const historyList = document.getElementById('historyList');
+
+            if (historyArray.length === 0) {
+                historyList.innerHTML = `
+                    <div class="text-center text-slate-400 mt-10">
+                        <p class="text-xs">尚無搜尋紀錄</p>
+                    </div>`;
+                return;
+            }
+
+            const grouped = historyArray.reduce((acc, item) => {
+                const cat = item.category || '未分類';
+                if (!acc[cat]) acc[cat] = [];
+                acc[cat].push(item);
+                return acc;
+            }, {});
+
+            Object.keys(grouped).forEach(cat => {
+                grouped[cat].sort((a, b) => a.price - b.price);
+            });
+
+            const catOrder = ['外套', '長袖', '短袖', '長褲', '短褲', '裙裝', '鞋子', '包包', '配件', '未分類'];
+            const sortedCats = Object.keys(grouped).sort((a, b) => {
+                let idxA = catOrder.indexOf(a);
+                let idxB = catOrder.indexOf(b);
+                if (idxA === -1) idxA = 99;
+                if (idxB === -1) idxB = 99;
+                return idxA - idxB;
+            });
+
+            historyList.innerHTML = sortedCats.map(cat => `
+                <div class="mb-6">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center border-b border-slate-100 pb-1.5">
+                        <i class="fa-solid fa-tag mr-2 opacity-60"></i> ${cat}
+                    </h4>
+                    <div class="space-y-2">
+                        ${grouped[cat].map(item => `
+                            <div class="history-card bg-white p-3 rounded-lg cursor-pointer group flex justify-between items-center" onclick="viewHistory(${item.id})">
+                                <div class="flex-grow truncate pr-2">
+                                    <div class="font-bold text-slate-700 text-sm mb-1 group-hover:text-slate-900 transition-colors truncate">
+                                        ${item.title}
+                                    </div>
+                                    <div class="text-xs text-slate-500 font-medium flex items-center">
+                                        <span class="text-slate-700">NT$ ${item.price === 999999 ? '未知' : item.price.toLocaleString()}</span>
+                                        <span class="text-slate-300 mx-1.5">•</span> 
+                                        <span class="text-slate-400 font-normal">${item.date}</span>
+                                    </div>
+                                </div>
+                                <button onclick="deleteHistory(event, ${item.id})" class="text-slate-300 hover:text-red-500 transition-colors p-2 rounded-md hover:bg-slate-50 flex-shrink-0">
+                                    <i class="fa-solid fa-xmark text-sm"></i>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function viewHistory(id) {
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
+            const item = historyArray.find(x => x.id === id);
+            if (item) {
+                const resultArea = document.getElementById('resultArea');
+                
+                let formattedResult = item.content;
+                
+                formattedResult = formattedResult.replace(/(🌟 【整體風格】|👗 【單品.*?】|💡 【買手小建議】|💸 【綜合建議】)/g, '<h3 class="text-slate-800 font-bold text-base md:text-lg mt-6 mb-3 border-b border-slate-200 pb-2">$1</h3>');
+                formattedResult = formattedResult.replace(/- 🏷️ \*\*系統分類\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">分類</span>$1</div>');
+                formattedResult = formattedResult.replace(/- 💲 \*\*最低台幣價格\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">最低估價</span> NT$ <span class="text-slate-900 font-medium">$1</span></div>');
+                formattedResult = formattedResult.replace(/- 🔍 \*\*特徵描述\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">特徵</span>$1</div>');
+                
+                formattedResult = formattedResult.replace(/- 🛍️ \*\*推薦購買管道\*\*：/g, '</div><div class="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4"><div class="text-slate-800 font-bold mb-3 text-sm flex items-center"><i class="fa-solid fa-cart-shopping mr-2 text-slate-400"></i>推薦購買管道</div>');
+                formattedResult = formattedResult.replace(/👉 預估運費：/g, '<div class="text-slate-500 text-xs mt-1 mb-2 pl-1"><i class="fa-solid fa-truck-fast mr-1.5 opacity-70"></i>運費估算：');
+                formattedResult = formattedResult.replace(/🔗 網址：\s*(https?:\/\/[^\s\n]+)/g, '</div><a href="$1" target="_blank" class="inline-flex items-center mt-2 mb-4 bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-md font-medium text-xs transition-colors no-underline"><i class="fa-solid fa-link mr-2 opacity-60"></i>前往查看商品</a><br>');
+                formattedResult = formattedResult.replace(/---/g, '</div>');
+
+                resultArea.innerHTML = `
+                    <div class="mb-4">
+                        <span class="inline-flex items-center px-2.5 py-1 bg-slate-100 text-slate-500 text-xs rounded border border-slate-200">
+                            歷史紀錄檢視
+                        </span>
+                    </div>
+                    <div class="p-1">${formattedResult}</div>
+                `;
+                
+                const autoSaveIndicator = document.getElementById('autoSaveIndicator');
+                if (autoSaveIndicator) autoSaveIndicator.classList.add('hidden');
+                
+                if(window.innerWidth < 1024) {
+                    resultArea.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        }
+
+        function deleteHistory(event, id) {
+            event.stopPropagation();
+            let historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
+            historyArray = historyArray.filter(x => x.id !== id);
+            localStorage.setItem('fashionAppHistory', JSON.stringify(historyArray));
+            renderHistory();
+        }
+
+        function clearHistory() {
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
+            if (historyArray.length === 0) return;
+            if (confirm("確定要清空所有紀錄嗎？")) {
+                localStorage.removeItem('fashionAppHistory');
+                renderHistory();
+            }
+        }
+    </script>
+</body>
+</html>
