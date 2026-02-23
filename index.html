@@ -13,7 +13,6 @@
     <!-- 設定手機桌面上的 App 圖示 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3159/3159614.png">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3159/3159614.png">
-    <!-- App 專屬設定結束 -->
 
     <title>搜搜穿搭</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -59,11 +58,19 @@
         
         .history-card { transition: all 0.2s ease; border: 1px solid #e2e8f0; }
         .history-card:hover { border-color: #94a3b8; background-color: #f8fafc; transform: translateX(2px); }
+
+        /* 安全的 Markdown 渲染樣式 */
+        .markdown-body h3 { font-size: 1.125rem; font-weight: 700; color: #1e293b; margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+        .markdown-body ul { list-style-type: disc; padding-left: 1.25rem; margin-bottom: 1rem; }
+        .markdown-body li { margin-bottom: 0.25rem; }
+        .markdown-body p { margin-bottom: 1rem; }
+        .markdown-body strong { color: #0f172a; font-weight: 700; }
+        .markdown-body a { color: #3b82f6; text-decoration: underline; font-weight: 500; }
     </style>
 </head>
 <body class="p-4 md:p-8 relative">
 
-    <!-- 🌟 全新升級：專屬金鑰登入畫面 (預設隱藏) -->
+    <!-- 專屬金鑰登入畫面 (預設隱藏) -->
     <div id="apiKeyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 transform transition-all">
             <div class="text-center mb-6">
@@ -150,7 +157,7 @@
                         </span>
                     </div>
                     
-                    <div id="resultArea" class="flex-grow prose prose-slate max-w-none text-slate-600 leading-relaxed whitespace-pre-wrap text-sm md:text-base">
+                    <div id="resultArea" class="flex-grow markdown-body text-sm md:text-base text-slate-700 leading-relaxed">
                         <div class="h-full flex flex-col items-center justify-center text-slate-300 py-12">
                             <i class="fa-solid fa-barcode text-4xl mb-4 font-light opacity-50"></i>
                             <p class="text-sm font-medium text-slate-400">等待載入影像進行分析</p>
@@ -192,7 +199,6 @@
         let selectedImageBase64 = null;
         let selectedImageMimeType = null;
 
-        // 🌟 美化的 Modal 邏輯
         function showApiKeyModal() {
             document.getElementById('apiKeyModal').classList.remove('hidden');
         }
@@ -225,20 +231,17 @@
             if (confirm("確定要登出並清除目前的通行證嗎？\n下次使用時需要重新輸入。")) {
                 localStorage.removeItem('gemini_api_key');
                 apiKey = "";
+                document.getElementById('apiKeyInput').value = "";
                 showApiKeyModal();
             }
         }
 
-        // --- Image Handling Logic ---
         document.addEventListener('DOMContentLoaded', () => {
             renderHistory();
-
-            // 如果一開始就沒金鑰，直接彈出精美視窗
             if (!apiKey || !apiKey.startsWith("AIzaSy")) {
                 showApiKeyModal();
             }
 
-            // Handle Paste Events (Ctrl+V)
             window.addEventListener('paste', e => {
                 const items = (e.clipboardData || e.originalEvent.clipboardData).items;
                 for (let index in items) {
@@ -298,8 +301,8 @@
 
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         
-        async function fetchWithRetry(url, options, maxRetries = 5) {
-            const delays = [1000, 2000, 4000, 8000, 16000];
+        async function fetchWithRetry(url, options, maxRetries = 3) {
+            const delays = [1000, 2000, 4000];
             for (let i = 0; i < maxRetries; i++) {
                 try {
                     const response = await fetch(url, options);
@@ -315,10 +318,24 @@
             }
         }
 
+        // 安全的 Markdown 轉 HTML 解析器，取代舊版容易破版的 Regex
+        function parseMarkdownSafely(text) {
+            let html = text
+                .replace(/### (.*)/g, '<h3>$1</h3>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n- (.*)/g, '<ul><li>$1</li></ul>')
+                .replace(/<\/ul>\n<ul>/g, '\n') // 合併相鄰的 ul
+                .replace(/\n/g, '<br>');
+                
+            // 轉換網址為可點擊的按鈕
+            html = html.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" class="inline-block mt-1 mb-2 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-3 py-1.5 rounded-md text-xs no-underline transition-colors"><i class="fa-solid fa-link mr-1"></i>前往商品頁面</a>');
+            
+            return `<p>${html}</p>`;
+        }
+
         async function startAnalysis() {
-            if (!checkAndGetApiKey()) {
-                return; 
-            }
+            if (!checkAndGetApiKey()) return;
 
             if (!selectedImageBase64) {
                 alert("請先上傳或貼上衣服的圖片！");
@@ -350,6 +367,9 @@
 
             promptText += `
                 請拆解圖片中最主要的「穿搭單品」，並務必利用 Google 搜尋功能，尋找真實的購買管道與精準比價。
+                ⚠️ 【極度重要限制】：過去你經常提供無效的電商首頁（如 https://shopee.tw 或是 https://zozo.jp 首頁）充當商品網址，這是絕對禁止的！
+                如果你無法透過搜尋工具確認該商品的「獨立專屬頁面真實網址」，請「一律」為使用者產生精準的 Google 購物搜尋連結，讓他們點擊後能直接看到商品。
+
                 請嚴格使用繁體中文，並依照以下格式條列輸出：
 
                 🌟 【整體風格】
@@ -363,13 +383,12 @@
                 - 💲 **最低台幣價格**：[填入純數字，為下方找到的最低台幣價格，例如 500]
                 - 🔍 **特徵描述**：(顏色、版型、材質、特殊設計)
                 - 🛍️ **推薦購買管道**：
-                   (⚠️ 務必提供 2-3 個「精準的商品專屬真實網址」，絕對不要只給電商首頁。若找不到完全一模一樣的正版商品，請提供相似度極高的同款/平替商品真實網址)
                    1. [準確品牌與商品名稱] - 預估價格：約 TWD [換算後的台幣價格] 元
-                      👉 預估運費：[若推薦網站為 Zozotown 等日網，務必標註「透過『樂淘』代購：預估日本境內運費+國際空運」。若是淘寶請估算集運費；台灣電商則估算國內運費]
-                      🔗 網址：[必須是該商品的真實獨立網址，以 http 開頭]
-                   2. [準確品牌與商品名稱] - 預估價格：約 TWD [換算後的台幣價格] 元
+                      👉 預估運費：[若是海外電商請估算國際運費；台灣電商則估算國內運費]
+                      🔗 網址：[必須是真實獨立商品網址。若無確切網址，請嚴格填入：https://www.google.com/search?tbm=shop&q=品牌與單品名稱]
+                   2. [類似平替商品名稱] - 預估價格：約 TWD [換算後的台幣價格] 元
                       👉 預估運費：[同上指示]
-                      🔗 網址：[必須是該商品的真實獨立網址，以 http 開頭]
+                      🔗 網址：[必須是真實獨立商品網址。若無確切網址，請嚴格填入：https://www.google.com/search?tbm=shop&q=平替商品名稱]
 
                 ---
                 💸 【綜合建議】
@@ -395,8 +414,8 @@
                 })
             };
 
-            // 🌟 自動備援機制：確保能自動相容您的金鑰！
-            const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+            // 🌟 自動備援機制：將最強且支援搜尋的預覽模型放在第一順位
+            const modelsToTry = ['gemini-2.5-flash-preview-09-2025', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
             let data = null;
             let lastError = null;
 
@@ -404,43 +423,23 @@
                 const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
                 try {
                     data = await fetchWithRetry(url, options);
-                    if (data && data.candidates) {
-                        break; 
-                    }
+                    if (data && data.candidates) break; 
                 } catch (error) {
-                    console.warn(`模型 ${modelName} 無法使用:`, error.message);
                     lastError = error;
                 }
             }
 
             try {
-                if (!data) {
-                    throw lastError || new Error("所有 AI 模型均無法連線，請確認您的金鑰是否正確。");
+                if (!data || !data.candidates) {
+                    throw lastError || new Error("AI 伺服器連線失敗，請稍後再試。");
                 }
 
-                if (data && data.candidates && data.candidates[0].content.parts[0].text) {
-                    currentAnalysisResult = data.candidates[0].content.parts[0].text;
-                    
-                    let formattedResult = currentAnalysisResult;
-                    
-                    formattedResult = formattedResult.replace(/(🌟 【整體風格】|👗 【單品.*?】|💡 【買手小建議】|💸 【綜合建議】)/g, '<h3 class="text-slate-800 font-bold text-base md:text-lg mt-6 mb-3 border-b border-slate-200 pb-2">$1</h3>');
-                    formattedResult = formattedResult.replace(/- 🏷️ \*\*系統分類\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">分類</span>$1</div>');
-                    formattedResult = formattedResult.replace(/- 💲 \*\*最低台幣價格\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">最低估價</span> NT$ <span class="text-slate-900 font-medium">$1</span></div>');
-                    formattedResult = formattedResult.replace(/- 🔍 \*\*特徵描述\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">特徵</span>$1</div>');
-                    formattedResult = formattedResult.replace(/- 🛍️ \*\*推薦購買管道\*\*：/g, '<div class="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4"><div class="text-slate-800 font-bold mb-3 text-sm flex items-center"><i class="fa-solid fa-cart-shopping mr-2 text-slate-400"></i>推薦購買管道</div>');
-                    formattedResult = formattedResult.replace(/👉 預估運費：/g, '<div class="text-slate-500 text-xs mt-1 mb-2 pl-1"><i class="fa-solid fa-truck-fast mr-1.5 opacity-70"></i>運費估算：');
-                    formattedResult = formattedResult.replace(/🔗 網址：\s*(https?:\/\/[^\s\n]+)/g, '</div><a href="$1" target="_blank" class="inline-flex items-center mt-2 mb-4 bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-md font-medium text-xs transition-colors no-underline"><i class="fa-solid fa-link mr-2 opacity-60"></i>前往查看商品</a><br>');
-                    formattedResult = formattedResult.replace(/---/g, '</div>');
+                currentAnalysisResult = data.candidates[0].content.parts[0].text;
+                resultArea.innerHTML = parseMarkdownSafely(currentAnalysisResult);
+                saveToHistory(true);
 
-                    resultArea.innerHTML = `<div class="p-1">${formattedResult}</div>`;
-                    
-                    saveToHistory(true);
-                } else {
-                    throw new Error("無法獲取有效的解析內容");
-                }
             } catch (error) {
                 console.error("API Error:", error);
-                
                 if(error.message.includes("API key not valid")) {
                     localStorage.removeItem('gemini_api_key');
                     apiKey = "";
@@ -450,7 +449,7 @@
                                 <i class="fa-solid fa-xmark text-xl text-red-500"></i>
                             </div>
                             <h3 class="text-red-600 font-bold mb-2 text-base">通行證無效</h3>
-                            <p class="text-slate-600 text-sm mb-4">您剛才輸入的金鑰無效或被系統阻擋了。</p>
+                            <p class="text-slate-600 text-sm mb-4">金鑰無效或被系統阻擋了。</p>
                             <button onclick="showApiKeyModal()" class="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-lg text-sm font-bold transition-colors">重新輸入通行證</button>
                         </div>`;
                 } else {
@@ -467,7 +466,6 @@
             }
         }
 
-        // --- History Management ---
         function saveToHistory(isAuto = false) {
             if (!currentAnalysisResult) return;
             
@@ -475,27 +473,25 @@
             const lines = currentAnalysisResult.split('\n');
             for (let line of lines) {
                 if (line.includes('單品一：')) {
-                    title = line.replace(/👗 【單品一：|】|\*\*/g, '').trim();
+                    title = line.replace(/### |👗 |【單品一：|】|\*\*/g, '').trim();
                     break;
                 }
             }
             if (title.length > 20) title = title.substring(0, 20) + '...';
 
             let category = "未分類";
-            const catMatch = currentAnalysisResult.match(/🏷️ \*\*系統分類\*\*：([^\n]+)/);
-            if (catMatch) {
-                category = catMatch[1].replace(/[\[\]]/g, '').trim();
-            }
+            const catMatch = currentAnalysisResult.match(/系統分類：([^\n]+)/);
+            if (catMatch) category = catMatch[1].replace(/[\[\]]/g, '').trim();
 
             let price = 999999;
-            const priceMatch = currentAnalysisResult.match(/💲 \*\*最低台幣價格\*\*：([^\n]+)/);
+            const priceMatch = currentAnalysisResult.match(/最低台幣價格：([^\n]+)/);
             if (priceMatch) {
                 const priceStr = priceMatch[1].replace(/[^0-9]/g, ''); 
                 if (priceStr) price = parseInt(priceStr, 10);
             }
 
             const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
-            historyArray.push({ 
+            historyArray.unshift({ 
                 id: Date.now(), 
                 title: title, 
                 category: category,
@@ -508,9 +504,7 @@
             renderHistory();
             
             const autoSaveIndicator = document.getElementById('autoSaveIndicator');
-            if (autoSaveIndicator) {
-                autoSaveIndicator.classList.remove('hidden');
-            }
+            if (autoSaveIndicator) autoSaveIndicator.classList.remove('hidden');
         }
 
         function renderHistory() {
@@ -518,10 +512,7 @@
             const historyList = document.getElementById('historyList');
 
             if (historyArray.length === 0) {
-                historyList.innerHTML = `
-                    <div class="text-center text-slate-400 mt-10">
-                        <p class="text-xs">尚無搜尋紀錄</p>
-                    </div>`;
+                historyList.innerHTML = `<div class="text-center text-slate-400 mt-10"><p class="text-xs">尚無搜尋紀錄</p></div>`;
                 return;
             }
 
@@ -531,10 +522,6 @@
                 acc[cat].push(item);
                 return acc;
             }, {});
-
-            Object.keys(grouped).forEach(cat => {
-                grouped[cat].sort((a, b) => a.price - b.price);
-            });
 
             const catOrder = ['外套', '長袖', '短袖', '長褲', '短褲', '裙裝', '鞋子', '包包', '配件', '未分類'];
             const sortedCats = Object.keys(grouped).sort((a, b) => {
@@ -578,34 +565,19 @@
             const item = historyArray.find(x => x.id === id);
             if (item) {
                 const resultArea = document.getElementById('resultArea');
-                
-                let formattedResult = item.content;
-                
-                formattedResult = formattedResult.replace(/(🌟 【整體風格】|👗 【單品.*?】|💡 【買手小建議】|💸 【綜合建議】)/g, '<h3 class="text-slate-800 font-bold text-base md:text-lg mt-6 mb-3 border-b border-slate-200 pb-2">$1</h3>');
-                formattedResult = formattedResult.replace(/- 🏷️ \*\*系統分類\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">分類</span>$1</div>');
-                formattedResult = formattedResult.replace(/- 💲 \*\*最低台幣價格\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">最低估價</span> NT$ <span class="text-slate-900 font-medium">$1</span></div>');
-                formattedResult = formattedResult.replace(/- 🔍 \*\*特徵描述\*\*：(.*)/g, '<div class="text-slate-700 mt-2 mb-1"><span class="font-bold text-slate-800 text-xs bg-slate-100 px-2 py-0.5 rounded mr-1 border border-slate-200">特徵</span>$1</div>');
-                
-                formattedResult = formattedResult.replace(/- 🛍️ \*\*推薦購買管道\*\*：/g, '</div><div class="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4"><div class="text-slate-800 font-bold mb-3 text-sm flex items-center"><i class="fa-solid fa-cart-shopping mr-2 text-slate-400"></i>推薦購買管道</div>');
-                formattedResult = formattedResult.replace(/👉 預估運費：/g, '<div class="text-slate-500 text-xs mt-1 mb-2 pl-1"><i class="fa-solid fa-truck-fast mr-1.5 opacity-70"></i>運費估算：');
-                formattedResult = formattedResult.replace(/🔗 網址：\s*(https?:\/\/[^\s\n]+)/g, '</div><a href="$1" target="_blank" class="inline-flex items-center mt-2 mb-4 bg-white text-slate-700 border border-slate-300 hover:bg-slate-100 px-4 py-2 rounded-md font-medium text-xs transition-colors no-underline"><i class="fa-solid fa-link mr-2 opacity-60"></i>前往查看商品</a><br>');
-                formattedResult = formattedResult.replace(/---/g, '</div>');
-
                 resultArea.innerHTML = `
                     <div class="mb-4">
                         <span class="inline-flex items-center px-2.5 py-1 bg-slate-100 text-slate-500 text-xs rounded border border-slate-200">
                             歷史紀錄檢視
                         </span>
                     </div>
-                    <div class="p-1">${formattedResult}</div>
+                    ${parseMarkdownSafely(item.content)}
                 `;
                 
                 const autoSaveIndicator = document.getElementById('autoSaveIndicator');
                 if (autoSaveIndicator) autoSaveIndicator.classList.add('hidden');
                 
-                if(window.innerWidth < 1024) {
-                    resultArea.scrollIntoView({ behavior: 'smooth' });
-                }
+                if(window.innerWidth < 1024) resultArea.scrollIntoView({ behavior: 'smooth' });
             }
         }
 
