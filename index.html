@@ -63,7 +63,7 @@
 </head>
 <body class="p-4 md:p-8 relative">
 
-    <!-- 🌟 專屬金鑰登入畫面 (預設隱藏) -->
+    <!-- 專屬金鑰登入畫面 -->
     <div id="apiKeyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 transform transition-all">
             <div class="text-center mb-6">
@@ -81,7 +81,11 @@
             </div>
             <button onclick="saveApiKeyFromModal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all shadow-md hover:shadow-lg flex items-center justify-center">
                 <i class="fa-solid fa-lock-open mr-2"></i> 儲存並解鎖 App
-    <!-- 🌟 新增：彈出式 Toast 提示 -->
+            </button>
+        </div>
+    </div>
+
+    <!-- 彈出式 Toast 提示 -->
     <div id="toastMsg" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-3.5 rounded-full text-sm font-bold shadow-xl transition-all duration-300 opacity-0 pointer-events-none z-[100] flex items-center whitespace-nowrap">
         <i class="fa-solid fa-circle-check mr-2 text-green-400" id="toastIcon"></i> <span id="toastText">訊息</span>
     </div>
@@ -93,6 +97,7 @@
                 <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
                     <i class="fa-solid fa-layer-group text-slate-400 mr-3 text-2xl"></i>搜搜穿搭
                 </h1>
+                <!-- 移除了尷尬的副標題 -->
             </div>
         </header>
 
@@ -134,7 +139,7 @@
                     </div>
 
                     <button id="analyzeBtn" onclick="startAnalysis()" class="mt-5 w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 px-6 rounded-lg transition-colors flex justify-center items-center shadow-sm">
-                        <i class="fa-solid fa-magnifying-glass mr-2 text-sm opacity-80"></i> <span id="btnText">開始搜尋同款</span>
+                        <i class="fa-solid fa-magnifying-glass mr-2 text-sm opacity-80"></i> <span id="btnText">開始解析服飾</span>
                     </button>
                 </div>
 
@@ -192,13 +197,52 @@
         let selectedImageBase64 = null;
         let selectedImageMimeType = null;
 
-        function showApiKeyModal() {
-            document.getElementById('apiKeyModal').classList.remove('hidden');
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toastMsg');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            
+            toastText.innerText = msg;
+            if (isError) {
+                toast.classList.replace('bg-slate-900', 'bg-red-600');
+                toastIcon.className = "fa-solid fa-triangle-exclamation mr-2 text-white";
+            } else {
+                toast.classList.replace('bg-red-600', 'bg-slate-900');
+                toastIcon.className = "fa-solid fa-circle-check mr-2 text-green-400";
+            }
+
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            toast.classList.add('bottom-16');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+                toast.classList.remove('bottom-16');
+            }, 3000);
         }
 
-        function hideApiKeyModal() {
-            document.getElementById('apiKeyModal').classList.add('hidden');
+        // 複製關鍵字功能
+        function copyKeyword(btnElement, text) {
+            const el = document.createElement('textarea');
+            el.value = text.trim();
+            document.body.appendChild(el);
+            el.select();
+            try {
+                document.execCommand('copy');
+                showToast('✅ 關鍵字複製成功！請前往平台貼上搜尋');
+                const originalHTML = btnElement.innerHTML;
+                btnElement.innerHTML = '<i class="fa-solid fa-check mr-1"></i>已複製';
+                btnElement.classList.replace('bg-slate-800', 'bg-green-600');
+                setTimeout(() => {
+                    btnElement.innerHTML = originalHTML;
+                    btnElement.classList.replace('bg-green-600', 'bg-slate-800');
+                }, 2000);
+            } catch (e) {
+                showToast('❌ 複製失敗，請手動選取複製', true);
+            }
+            document.body.removeChild(el);
         }
+
+        function showApiKeyModal() { document.getElementById('apiKeyModal').classList.remove('hidden'); }
+        function hideApiKeyModal() { document.getElementById('apiKeyModal').classList.add('hidden'); }
 
         function saveApiKeyFromModal() {
             const val = document.getElementById('apiKeyInput').value.trim();
@@ -206,7 +250,7 @@
                 apiKey = val;
                 localStorage.setItem('gemini_api_key', apiKey);
                 hideApiKeyModal();
-                alert("✅ 通行證解鎖成功！您可以開始上傳圖片搜尋了！");
+                showToast("✅ 通行證解鎖成功！您可以開始上傳圖片搜尋了！");
             } else {
                 alert("⛔ 格式錯誤：通行證必須是 AIzaSy 開頭的文字喔！");
             }
@@ -229,7 +273,6 @@
             }
         }
 
-        // --- Image Handling Logic ---
         document.addEventListener('DOMContentLoaded', () => {
             renderHistory();
 
@@ -270,7 +313,7 @@
 
         function processImageFile(file) {
             if (!file.type.match('image.*')) {
-                alert("請上傳圖片檔案！"); return;
+                showToast("請上傳圖片檔案！", true); return;
             }
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -313,28 +356,7 @@
             }
         }
 
-        // 🌟 複製關鍵字功能
-        function copyKeyword(btnElement, text) {
-            const el = document.createElement('textarea');
-            el.value = text.trim();
-            document.body.appendChild(el);
-            el.select();
-            try {
-                document.execCommand('copy');
-                const originalHTML = btnElement.innerHTML;
-                btnElement.innerHTML = '<i class="fa-solid fa-check mr-1"></i>已複製';
-                btnElement.classList.replace('text-blue-500', 'text-green-600');
-                setTimeout(() => {
-                    btnElement.innerHTML = originalHTML;
-                    btnElement.classList.replace('text-green-600', 'text-blue-500');
-                }, 2000);
-            } catch (e) {
-                alert('複製失敗，請手動選取複製');
-            }
-            document.body.removeChild(el);
-        }
-
-        // 🌟 核心排版處理函數 (完美保留您截圖中的設計)
+        // 🌟 核心排版處理 (轉換為複製關鍵字 UI)
         function formatResultText(text) {
             let formattedResult = text;
             
@@ -347,25 +369,23 @@
             formattedResult = formattedResult.replace(/- 🛍️ \*\*推薦購買管道\*\*：/g, '<div class="bg-slate-50 p-4 rounded-lg border border-slate-200 my-4"><div class="text-slate-800 font-bold mb-3 text-sm flex items-center"><i class="fa-solid fa-cart-shopping mr-2 text-slate-400"></i>推薦購買管道</div>');
             formattedResult = formattedResult.replace(/👉 預估運費：(.*)/g, '<div class="text-slate-500 text-xs mt-1 mb-2 pl-1"><i class="fa-solid fa-truck-fast mr-1.5 opacity-70"></i>運費估算：$1</div>');
             
-            // 將關鍵字變成可以點擊複製的按鈕
-            formattedResult = formattedResult.replace(/🔑 搜尋關鍵字：([^\n]+)/g, function(match, p1) {
+            // 🌟 將關鍵字變成精美的「複製區塊」
+            formattedResult = formattedResult.replace(/🔑 搜尋關鍵字：\s*([^\n<]+)/g, function(match, p1) {
                 let cleanKeyword = p1.replace(/'/g, "\\'").replace(/"/g, "&quot;").trim();
-                return `<div class="flex items-center mt-2 mb-4 pl-1"><code class="bg-white border border-slate-200 text-slate-700 px-2 py-1 rounded text-xs mr-2 shadow-sm font-mono tracking-wide">${p1.trim()}</code><button onclick="copyKeyword(this, '${cleanKeyword}')" class="text-blue-500 hover:text-blue-700 text-xs font-bold flex items-center transition-colors bg-blue-50 px-2 py-1 rounded border border-blue-100"><i class="fa-regular fa-copy mr-1"></i>複製關鍵字</button></div>`;
+                return `<div class="mt-2 mb-4 pl-1"><div class="flex items-center gap-2"><code class="bg-white border border-slate-200 text-slate-700 px-3 py-2 rounded text-sm flex-grow shadow-sm font-mono truncate">${p1.trim()}</code><button onclick="copyKeyword(this, '${cleanKeyword}')" class="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap shadow-sm"><i class="fa-regular fa-copy mr-1"></i>複製關鍵字</button></div></div>`;
             });
             
-            // 使用 --- 來關閉推薦區塊的 div
+            // 關閉推薦區塊的 div
             formattedResult = formattedResult.replace(/---/g, '</div>');
 
             return `<div class="p-1">${formattedResult}</div>`;
         }
 
         async function startAnalysis() {
-            if (!checkAndGetApiKey()) {
-                return; 
-            }
+            if (!checkAndGetApiKey()) return; 
 
             if (!selectedImageBase64) {
-                alert("請先上傳或貼上衣服的圖片！");
+                showToast("請先上傳或貼上衣服的圖片！", true);
                 return;
             }
 
@@ -382,7 +402,7 @@
             resultArea.innerHTML = `
                 <div class="h-full flex flex-col items-center justify-center text-slate-500 py-10">
                     <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-slate-300"></i>
-                    <p class="text-sm">系統正在比對電商資料與計算運費...</p>
+                    <p class="text-sm">系統正在比對電商資料與產生關鍵字...</p>
                 </div>`;
 
             let promptText = `
@@ -394,6 +414,8 @@
 
             promptText += `
                 請拆解圖片中最主要的「穿搭單品」。
+                ⚠️ 為了確保使用者能順利買到商品，請絕對不要提供網址，只要給出最精準的「搜尋關鍵字」讓使用者自己複製去電商搜尋。
+                
                 請嚴格使用繁體中文，並依照以下格式條列輸出（完全照這個格式，不要改變符號）：
 
                 🌟 【整體風格】
@@ -410,7 +432,7 @@
                    (請提供 2-3 個推薦平台，給出精準的「搜尋關鍵字」讓使用者自己去搜尋)
                    1. 平台名稱 (例如：蝦皮購物) - 預估價格：約 TWD [價格] 元
                       👉 預估運費：[估算運費，如：台灣國內運費約60元]
-                      🔑 搜尋關鍵字：[請給出最精準的關鍵字，例如：ZARA 坑條 針織 毛衣]
+                      🔑 搜尋關鍵字：[請給出最精準的關鍵字組合，例如：ZARA 坑條 針織 毛衣]
                    2. 平台名稱 (例如：淘寶) - 預估價格：約 TWD [價格] 元
                       👉 預估運費：[估算集運費]
                       🔑 搜尋關鍵字：[請給出平替款的關鍵字，例如：寬鬆 坑條 針織 罩衫]
@@ -466,7 +488,6 @@
                     currentAnalysisResult = data.candidates[0].content.parts[0].text;
                     
                     resultArea.innerHTML = formatResultText(currentAnalysisResult);
-                    
                     saveToHistory(true);
                 } else {
                     throw new Error("無法獲取有效的解析內容");
@@ -496,7 +517,7 @@
             } finally {
                 analyzeBtn.disabled = false;
                 analyzeBtn.classList.remove('opacity-75', 'cursor-not-allowed');
-                btnText.innerHTML = `開始搜尋同款`;
+                btnText.innerHTML = `開始解析服飾`;
             }
         }
 
@@ -528,7 +549,7 @@
             }
 
             const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
-            historyArray.push({ 
+            historyArray.unshift({ 
                 id: Date.now(), 
                 title: title, 
                 category: category,
