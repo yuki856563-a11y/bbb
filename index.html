@@ -4,16 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
-    <!-- App 專屬設定開始 (PWA Meta Tags) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="搜搜穿搭">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#f8fafc">
-    <!-- 設定手機桌面上的 App 圖示 -->
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3159/3159614.png">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3159/3159614.png">
-    <!-- App 專屬設定結束 -->
 
     <title>搜搜穿搭</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -59,11 +56,14 @@
         
         .history-card { transition: all 0.2s ease; border: 1px solid #e2e8f0; }
         .history-card:hover { border-color: #94a3b8; background-color: #f8fafc; transform: translateX(2px); }
+
+        .badge-authentic { background-color: #fef2f2; color: #dc2626; border-color: #fecaca; }
+        .badge-replica { background-color: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+        .badge-similar { background-color: #f8fafc; color: #475569; border-color: #e2e8f0; }
     </style>
 </head>
 <body class="p-4 md:p-8 relative">
 
-    <!-- 專屬金鑰登入畫面 -->
     <div id="apiKeyModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 transition-opacity">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 transform transition-all">
             <div class="text-center mb-6">
@@ -85,28 +85,23 @@
         </div>
     </div>
 
-    <!-- 彈出式 Toast 提示 -->
+    <!-- Toast 提示 -->
     <div id="toastMsg" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white px-6 py-3.5 rounded-full text-sm font-bold shadow-xl transition-all duration-300 opacity-0 pointer-events-none z-[100] flex items-center whitespace-nowrap">
         <i class="fa-solid fa-circle-check mr-2 text-green-400" id="toastIcon"></i> <span id="toastText">訊息</span>
     </div>
 
     <div class="max-w-7xl mx-auto">
-        <!-- Header -->
         <header class="mb-10 mt-4 flex flex-col md:flex-row md:items-end justify-between border-b border-slate-200 pb-6">
             <div>
                 <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-2">
                     <i class="fa-solid fa-layer-group text-slate-400 mr-3 text-2xl"></i>搜搜穿搭
                 </h1>
-                <p class="text-slate-500 text-sm md:text-base">精準特徵辨識・一鍵複製關鍵字搜同款</p>
+                <p class="text-slate-500 text-sm md:text-base">精準特徵辨識・正版/平替/類似款 一次搜齊</p>
             </div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            
-            <!-- Left Column: Input & Results -->
             <div class="lg:col-span-8 space-y-6">
-                
-                <!-- Input Section -->
                 <div class="clean-panel p-6 md:p-8">
                     <h2 class="text-lg font-bold mb-5 flex items-center text-slate-800">
                         <span class="bg-slate-100 text-slate-500 w-7 h-7 rounded-md flex items-center justify-center mr-3 text-xs border border-slate-200">1</span>
@@ -131,15 +126,14 @@
                     </div>
 
                     <div class="mt-4">
-                        <input type="text" id="userInputText" class="w-full p-3.5 bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-400 focus:border-slate-400 outline-none transition-all text-sm placeholder-slate-400" placeholder="（選填）想特別找哪件單品？例如：黑色西裝外套...">
+                        <input type="text" id="userInputText" class="w-full p-3.5 bg-white border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-400 focus:border-slate-400 outline-none transition-all text-sm placeholder-slate-400" placeholder="（選填）想特別找哪件單品？例如：圖中的黑色西裝外套...">
                     </div>
 
                     <button id="analyzeBtn" onclick="startAnalysis()" class="mt-5 w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3.5 px-6 rounded-lg transition-colors flex justify-center items-center shadow-sm">
-                        <i class="fa-solid fa-magnifying-glass mr-2 text-sm opacity-80"></i> <span id="btnText">開始解析服裝特徵</span>
+                        <i class="fa-solid fa-magnifying-glass mr-2 text-sm opacity-80"></i> <span id="btnText">開始解析並提供 3 種購買選擇</span>
                     </button>
                 </div>
 
-                <!-- Result Section -->
                 <div class="clean-panel p-6 md:p-8 min-h-[400px] flex flex-col">
                     <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                         <h2 class="text-lg font-bold flex items-center text-slate-800">
@@ -158,10 +152,8 @@
                         </div>
                     </div>
                 </div>
-
             </div>
 
-            <!-- Right Column: History -->
             <div class="lg:col-span-4">
                 <div class="clean-panel p-6 h-full flex flex-col max-h-[850px]">
                     <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
@@ -170,20 +162,16 @@
                         </h2>
                         <div class="space-x-2 flex-shrink-0">
                             <button onclick="resetApiKey()" class="text-xs text-slate-400 hover:text-blue-500 transition-colors font-medium">
-                                <i class="fa-solid fa-lock mr-1"></i>重設金鑰
+                                <i class="fa-solid fa-lock mr-1"></i>重設
                             </button>
                             <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-red-500 transition-colors font-medium">
-                                <i class="fa-solid fa-trash-can mr-1"></i>清空全部
+                                <i class="fa-solid fa-trash-can mr-1"></i>清空
                             </button>
                         </div>
                     </div>
-                    
-                    <div id="historyList" class="flex-grow overflow-y-auto custom-scrollbar pr-2">
-                        <!-- History items injected here -->
-                    </div>
+                    <div id="historyList" class="flex-grow overflow-y-auto custom-scrollbar pr-2"></div>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -193,7 +181,7 @@
         let selectedImageBase64 = null;
         let selectedImageMimeType = null;
 
-        // --- UI & Utility Functions ---
+        // --- UI Functions ---
         function showToast(msg, isError = false) {
             const toast = document.getElementById('toastMsg');
             const toastText = document.getElementById('toastText');
@@ -210,7 +198,6 @@
 
             toast.classList.remove('opacity-0', 'pointer-events-none');
             toast.classList.add('bottom-16');
-            
             setTimeout(() => {
                 toast.classList.add('opacity-0', 'pointer-events-none');
                 toast.classList.remove('bottom-16');
@@ -218,7 +205,6 @@
         }
 
         function copyText(text, msg) {
-            // 使用 textarea 確保在手機與 iframe 環境下也能正常複製
             const el = document.createElement('textarea');
             el.value = text;
             el.setAttribute('readonly', '');
@@ -235,7 +221,6 @@
             document.body.removeChild(el);
         }
 
-        // --- Auth Functions ---
         function showApiKeyModal() { document.getElementById('apiKeyModal').classList.remove('hidden'); }
         function hideApiKeyModal() { document.getElementById('apiKeyModal').classList.add('hidden'); }
 
@@ -260,7 +245,7 @@
         }
 
         function resetApiKey() {
-            if (confirm("確定要登出並清除目前的通行證嗎？\n下次使用時需要重新輸入。")) {
+            if (confirm("確定要登出並清除目前的通行證嗎？")) {
                 localStorage.removeItem('gemini_api_key');
                 apiKey = "";
                 document.getElementById('apiKeyInput').value = "";
@@ -288,6 +273,7 @@
 
             const dropZone = document.getElementById('dropZone');
             dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+            // 修復了這裡的 SyntaxError
             dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
             dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
@@ -324,7 +310,6 @@
             document.getElementById('imagePreview').src = "";
         }
 
-        // --- AI API Logic ---
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
         
         async function fetchWithRetry(url, options, maxRetries = 3) {
@@ -344,77 +329,97 @@
             }
         }
 
-        // ⭐ 專為「手動複製搜尋」與「真實網址」打造的 UI 渲染器
+        // ⭐ 全新 UI：為單一商品渲染 3 種不同價位/等級的選擇
         function renderJSONtoHTML(data) {
             let html = `
                 <div class="mb-5 bg-slate-50 border border-slate-200 p-4 rounded-xl">
-                    <h3 class="text-sm font-bold text-slate-800 mb-1">🌟 整體風格解析</h3>
+                    <h3 class="text-sm font-bold text-slate-800 mb-1">🌟 整體穿搭風格解析</h3>
                     <p class="text-slate-600 text-sm">${data.overall_style}</p>
                 </div>
-                <div class="space-y-6">
+                <div class="space-y-8">
             `;
 
-            data.items.forEach((item, index) => {
-                
-                // 1. 處理直達網址 (Method 2)
-                let directUrlHtml = '';
-                if (item.direct_url && item.direct_url.trim() !== "" && item.direct_url.startsWith('http')) {
-                    directUrlHtml = `
-                        <div class="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                            <div class="text-xs font-bold text-emerald-800 mb-2"><i class="fa-solid fa-link mr-1"></i> AI 找到的真實商品網址：</div>
-                            <div class="flex gap-2 items-center">
-                                <input type="text" readonly value="${item.direct_url}" class="flex-grow bg-white border border-emerald-200 rounded px-2 py-2 text-xs text-slate-500 outline-none">
-                                <button onclick="copyText('${item.direct_url}', '🔗 已複製商品網址！')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded text-xs font-bold shrink-0 transition-colors shadow-sm">複製</button>
-                                <a href="${item.direct_url}" target="_blank" class="bg-white border border-emerald-600 text-emerald-700 hover:bg-emerald-50 px-3 py-2 rounded text-xs font-bold shrink-0 transition-colors shadow-sm text-center">開啟</a>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // 2. 處理電商快捷按鈕 (Method 1)
-                let platformsHtml = item.platforms.map(p => `
-                    <a href="${p.url}" target="_blank" class="inline-flex items-center justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-slate-700 px-3 py-2 rounded-lg text-xs font-bold transition-all shadow-sm">
-                        前往 ${p.name}
-                    </a>
-                `).join('');
-
+            data.items.forEach((item) => {
                 html += `
-                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <div class="border-2 border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
                         <div class="bg-slate-100 px-4 py-3 border-b border-slate-200 flex justify-between items-center">
-                            <h4 class="font-bold text-slate-800 text-base">👗 ${item.name}</h4>
-                            <span class="bg-white text-slate-600 text-xs px-2 py-1 rounded border border-slate-200 shadow-sm">${item.category}</span>
+                            <h4 class="font-black text-slate-800 text-lg">👗 ${item.item_name}</h4>
+                            <span class="bg-white text-slate-600 text-xs px-2 py-1 rounded border border-slate-200 shadow-sm font-bold">${item.category}</span>
                         </div>
-                        <div class="p-4 md:p-5">
-                            <div class="flex flex-wrap gap-4 mb-4 text-sm">
-                                <div class="w-full md:w-auto">
-                                    <span class="text-slate-400 block text-xs mb-0.5">預估最低價</span>
-                                    <span class="font-black text-slate-800">NT$ ${item.price_twd.toLocaleString()}</span>
+                        <div class="p-4">
+                            <p class="text-sm text-slate-600 mb-5"><span class="font-bold text-slate-500">特徵：</span>${item.features}</p>
+                            
+                            <h5 class="font-bold text-slate-800 mb-3 text-sm border-b border-slate-100 pb-2"><i class="fa-solid fa-list-ul mr-2"></i>為您找到的 3 種購買方案：</h5>
+                            <div class="space-y-4">
+                `;
+
+                // 渲染 3 個選項
+                item.purchase_options.forEach((opt) => {
+                    let badgeClass = "badge-similar";
+                    let icon = "fa-tag";
+                    if(opt.type.includes("正版") || opt.type.includes("原版")) {
+                        badgeClass = "badge-authentic";
+                        icon = "fa-crown";
+                    } else if (opt.type.includes("平替") || opt.type.includes("同款")) {
+                        badgeClass = "badge-replica";
+                        icon = "fa-gem";
+                    }
+
+                    // 處理直達網址
+                    let directUrlHtml = '';
+                    if (opt.direct_url && opt.direct_url.trim() !== "" && opt.direct_url.startsWith('http')) {
+                        directUrlHtml = `
+                            <div class="mt-3 flex gap-2 items-center">
+                                <a href="${opt.direct_url}" target="_blank" class="flex-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 py-2 rounded text-xs font-bold transition-colors shadow-sm text-center">
+                                    <i class="fa-solid fa-link mr-1"></i> 直達商品網址
+                                </a>
+                            </div>
+                        `;
+                    }
+
+                    // 處理平台快捷按鈕
+                    let platformsHtml = opt.platforms.map(p => `
+                        <a href="${p.url}" target="_blank" class="inline-flex items-center justify-center bg-white border border-slate-300 hover:bg-slate-50 hover:border-slate-400 text-slate-700 px-3 py-1.5 rounded text-xs font-bold transition-all">
+                            搜 ${p.name}
+                        </a>
+                    `).join('');
+
+                    html += `
+                        <div class="border border-slate-200 rounded-lg p-3 hover:border-slate-300 transition-colors">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black border uppercase tracking-wider mb-1 ${badgeClass}">
+                                        <i class="fa-solid ${icon} mr-1"></i> ${opt.type}
+                                    </span>
+                                    <div class="font-bold text-slate-800 text-sm mt-0.5">${opt.name}</div>
                                 </div>
-                                <div class="w-full md:w-auto flex-grow">
-                                    <span class="text-slate-400 block text-xs mb-0.5">單品特徵</span>
-                                    <span class="text-slate-700">${item.features}</span>
+                                <div class="text-right whitespace-nowrap ml-2">
+                                    <span class="text-xs text-slate-400 block mb-0.5">預估約</span>
+                                    <span class="font-black text-slate-800">NT$ ${opt.price_twd.toLocaleString()}</span>
                                 </div>
                             </div>
                             
-                            ${directUrlHtml}
-                            
-                            <!-- 🌟 強大的關鍵字複製區塊 -->
-                            <div class="bg-blue-50/50 p-4 rounded-lg border border-blue-100">
-                                <div class="text-xs font-bold text-blue-800 mb-2"><i class="fa-solid fa-magnifying-glass mr-1"></i> 手動搜同款 (推薦)：</div>
-                                <p class="text-xs text-slate-500 mb-3">1. 複製下方關鍵字 ➡️ 2. 點擊電商按鈕 ➡️ 3. 在電商搜尋框貼上</p>
-                                
-                                <div class="flex items-center gap-2 mb-4">
-                                    <div class="flex-grow bg-white border border-blue-200 rounded-md px-3 py-2 text-sm font-bold text-blue-900 truncate shadow-inner">
-                                        ${item.search_keyword}
-                                    </div>
-                                    <button onclick="copyText('${item.search_keyword}', '✂️ 已複製關鍵字！請點擊下方電商前往貼上')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-xs font-bold shrink-0 transition-colors shadow-sm flex items-center">
-                                        <i class="fa-regular fa-copy mr-1"></i> 複製關鍵字
+                            <div class="mt-3 pt-3 border-t border-slate-100">
+                                <div class="text-[10px] font-bold text-slate-400 mb-1 flex justify-between items-center">
+                                    精準搜尋關鍵字：
+                                    <button onclick="copyText('${opt.search_keyword}', '✂️ 已複製：${opt.search_keyword}')" class="text-blue-600 hover:text-blue-800 flex items-center">
+                                        <i class="fa-regular fa-copy mr-1"></i> 複製去搜尋
                                     </button>
                                 </div>
+                                <div class="bg-slate-50 border border-slate-200 rounded px-2 py-1.5 text-xs font-mono text-slate-600 truncate mb-2">
+                                    ${opt.search_keyword}
+                                </div>
                                 
-                                <div class="flex flex-wrap gap-2 pt-3 border-t border-blue-100/50">
+                                <div class="flex flex-wrap gap-2">
                                     ${platformsHtml}
                                 </div>
+                            </div>
+                            ${directUrlHtml}
+                        </div>
+                    `;
+                });
+
+                html += `
                             </div>
                         </div>
                     </div>
@@ -423,7 +428,7 @@
 
             html += `
                 </div>
-                <div class="mt-6 bg-slate-800 text-white p-5 rounded-xl">
+                <div class="mt-8 bg-slate-800 text-white p-5 rounded-xl">
                     <h3 class="text-sm font-bold text-slate-200 mb-2"><i class="fa-solid fa-lightbulb mr-2 text-yellow-400"></i>買手綜合建議</h3>
                     <p class="text-slate-200 text-sm leading-relaxed">${data.summary}</p>
                 </div>
@@ -443,52 +448,68 @@
 
             analyzeBtn.disabled = true;
             analyzeBtn.classList.add('opacity-75', 'cursor-not-allowed');
-            btnText.innerHTML = `正在生成導購資料<span class="loading-dots"></span>`;
+            btnText.innerHTML = `正在分析款式與價格選項<span class="loading-dots"></span>`;
             if (autoSaveIndicator) autoSaveIndicator.classList.add('hidden');
             
             resultArea.innerHTML = `
                 <div class="h-full flex flex-col items-center justify-center text-slate-500 py-10">
                     <i class="fa-solid fa-spinner fa-spin text-3xl mb-4 text-slate-300"></i>
-                    <p class="text-sm font-medium">AI 正在深度解析服裝特徵...</p>
-                    <p class="text-xs text-slate-400 mt-2">即將為您產生精準關鍵字與電商連結</p>
+                    <p class="text-sm font-medium">AI 正在為您尋找 正版 / 平替 / 類似款...</p>
+                    <p class="text-xs text-slate-400 mt-2">即將為您產生精準關鍵字與導購</p>
                 </div>`;
 
-            // ⭐ 強制要求 AI 回傳結構化 JSON，不再自己亂編網址
-            let promptText = `
-                你是一位專業的服裝分析師。請分析這張穿搭圖片。
-            `;
-            if (inputText) promptText += `使用者特別強調：『${inputText}』。\n`;
+            let promptText = `你是一位專業的服裝分析師。請分析這張穿搭圖片。\n`;
+            if (inputText) promptText += `使用者特別強調想尋找：『${inputText}』。請以此單品為重點分析。\n`;
 
+            // ⭐ 核心指令變更：針對單一服飾，給出 3 種階級的選擇
             promptText += `
                 任務：提取服裝特徵，並產出「真實可用的電商導購策略」。
-                為了避免給出無效的電商首頁假網址，請你嚴格按照以下兩種導購邏輯：
-                1. 若你有 100% 把握能透過搜尋找到該商品的「真實獨立商品頁面網址」，請填入 direct_url 中。若找不到，請務必留空。
-                2. 為該單品生成一組「最精準、最容易在電商平台搜出同款的關鍵字 (search_keyword)」。
+                ⚠️ 【極度重要限制】：
+                1. 針對你辨識出的單品，你必須為其提供「至少 3 種不同價位或等級」的購買選項 (purchase_options)：
+                   - 第一種：【正版品牌】(最符合原圖的正版商品或該風格指標品牌)
+                   - 第二種：【高仿平替】(外觀極度相似的高CP值同款替代品)
+                   - 第三種：【類似風格】(預算更低的相似款式)
+                2. 若你有 100% 把握能找到該商品的「真實獨立商品頁面網址」，請填入 direct_url 中。若找不到，請務必留空字串 ""，絕對禁止提供蝦皮或淘寶首頁！
+                3. 為每個選項生成一組「最精準、最容易在電商平台搜出的關鍵字 (search_keyword)」。
+                4. 推薦平台請避開 Momo、PChome 等綜合電商，請優先推薦 蝦皮、淘寶、SHEIN、Zozotown、GU 或 Google購物。
 
-                ⚠️ 【電商篩選嚴格限制】：
-                - 尋找一般服飾類商品時，請優先推薦 蝦皮(Shopee)、淘寶(Taobao)、SHEIN、Zozotown 等服飾主力平台，或是該風格的獨立網拍官網。
-                - ⛔ **絕對不要推薦 Momo、PChome、Yahoo 等綜合型電商** 尋找一般服飾！
-                - 唯一例外：除非該商品是「國際知名正版品牌（如 Nike, Adidas, The North Face 等）」，且在該綜合電商有官方旗艦店，才允許列出。
-
-                請嚴格回傳以下的 JSON 格式，不要包含任何 Markdown 標籤或多餘文字：
+                請嚴格回傳以下的 JSON 格式，不要包含任何 Markdown 標籤：
                 {
                     "overall_style": "這套穿搭的整體風格描述",
                     "items": [
                         {
-                            "name": "商品名稱 (例如：ZARA 坑條針織毛衣)",
-                            "category": "長袖 / 短袖 / 外套 / 長褲 / 短褲 / 裙裝 / 鞋子 / 包包 / 配件",
-                            "price_twd": 1200,
-                            "features": "顏色、材質、版型",
-                            "direct_url": "真實商品網址 (找不到請保持空字串 \"\")",
-                            "search_keyword": "精準電商搜尋關鍵字 (例如：白色 坑條 針織 毛衣 女)",
-                            "platforms": [
-                                {"name": "蝦皮購物", "url": "https://shopee.tw"},
-                                {"name": "淘寶", "url": "https://world.taobao.com"},
-                                {"name": "Google購物", "url": "https://www.google.com/search?tbm=shop"}
+                            "item_name": "主要辨識出的單品總稱 (例如：黑色雙排扣西裝外套)",
+                            "category": "外套 / 長袖 / 短袖 / 長褲 / 裙裝 / 鞋子 / 包包",
+                            "features": "顏色、材質、版型等特徵描述",
+                            "purchase_options": [
+                                {
+                                    "type": "正版品牌",
+                                    "name": "具體品牌與名稱 (例如：ZARA 雙排扣西裝外套)",
+                                    "price_twd": 2990,
+                                    "search_keyword": "精準搜尋關鍵字 (例如：ZARA 黑色 雙排扣 西裝外套 女)",
+                                    "direct_url": "真實商品網址或留空",
+                                    "platforms": [ {"name": "蝦皮購物", "url": "https://shopee.tw"}, {"name": "Google購物", "url": "https://www.google.com/search?tbm=shop"} ]
+                                },
+                                {
+                                    "type": "高仿平替",
+                                    "name": "具體名稱 (例如：韓版 寬鬆雙排扣西裝外套)",
+                                    "price_twd": 850,
+                                    "search_keyword": "韓版 黑色 寬鬆 雙排扣 西裝外套",
+                                    "direct_url": "",
+                                    "platforms": [ {"name": "淘寶", "url": "https://world.taobao.com"}, {"name": "蝦皮購物", "url": "https://shopee.tw"} ]
+                                },
+                                {
+                                    "type": "類似風格",
+                                    "name": "具體名稱 (例如：百搭 素面休閒西裝)",
+                                    "price_twd": 499,
+                                    "search_keyword": "百搭 黑色 素面 西裝外套 平價",
+                                    "direct_url": "",
+                                    "platforms": [ {"name": "蝦皮購物", "url": "https://shopee.tw"} ]
+                                }
                             ]
                         }
                     ],
-                    "summary": "給使用者的購買建議"
+                    "summary": "給使用者的購買與穿搭建議"
                 }
             `;
 
@@ -502,7 +523,7 @@
                             { inlineData: { mimeType: selectedImageMimeType, data: selectedImageBase64 } }
                         ]
                     }],
-                    tools: [{ google_search: {} }], // 啟用搜尋核實
+                    tools: [{ google_search: {} }], 
                     generationConfig: { responseMimeType: "application/json" }
                 })
             };
@@ -553,32 +574,38 @@
             } finally {
                 analyzeBtn.disabled = false;
                 analyzeBtn.classList.remove('opacity-75', 'cursor-not-allowed');
-                btnText.innerHTML = `開始搜圖比價`;
+                btnText.innerHTML = `開始解析並提供 3 種購買選擇`;
             }
         }
 
         // --- History Management ---
         function saveToHistory() {
-            if (!currentAnalysisResultData) return;
+            if (!currentAnalysisResultData || !currentAnalysisResultData.items || currentAnalysisResultData.items.length === 0) return;
             
             const data = currentAnalysisResultData;
             const firstItem = data.items[0];
             
-            let title = firstItem ? firstItem.name : "穿搭搜尋紀錄";
-            let category = firstItem ? firstItem.category : "未分類";
-            let price = firstItem ? firstItem.price_twd : 0;
+            let title = firstItem.item_name || "穿搭單品";
+            let category = firstItem.category || "未分類";
+            
+            // 歷史紀錄顯示最低價格選項的價錢
+            let minPrice = 0;
+            if (firstItem.purchase_options && firstItem.purchase_options.length > 0) {
+                const prices = firstItem.purchase_options.map(opt => opt.price_twd).filter(p => typeof p === 'number');
+                if (prices.length > 0) minPrice = Math.min(...prices);
+            }
 
-            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v2') || '[]');
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v3') || '[]');
             historyArray.unshift({ 
                 id: Date.now(), 
                 title: title, 
                 category: category,
-                price: price,
+                price: minPrice,
                 jsonData: data,
                 date: new Date().toLocaleString('zh-TW', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', hour12: false }) 
             });
 
-            localStorage.setItem('fashionAppHistoryJSON_v2', JSON.stringify(historyArray));
+            localStorage.setItem('fashionAppHistoryJSON_v3', JSON.stringify(historyArray));
             renderHistory();
             
             const autoSaveIndicator = document.getElementById('autoSaveIndicator');
@@ -586,7 +613,7 @@
         }
 
         function renderHistory() {
-            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v2') || '[]');
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v3') || '[]');
             const historyList = document.getElementById('historyList');
 
             if (historyArray.length === 0) {
@@ -623,7 +650,7 @@
                                         ${item.title}
                                     </div>
                                     <div class="text-xs text-slate-500 font-medium flex items-center">
-                                        <span class="text-slate-700">NT$ ${item.price.toLocaleString()}</span>
+                                        <span class="text-slate-700">平替約 NT$ ${item.price.toLocaleString()}</span>
                                         <span class="text-slate-300 mx-1.5">•</span> 
                                         <span class="text-slate-400 font-normal">${item.date}</span>
                                     </div>
@@ -639,7 +666,7 @@
         }
 
         function viewHistory(id) {
-            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v2') || '[]');
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v3') || '[]');
             const item = historyArray.find(x => x.id === id);
             if (item && item.jsonData) {
                 const resultArea = document.getElementById('resultArea');
@@ -664,17 +691,17 @@
 
         function deleteHistory(event, id) {
             event.stopPropagation();
-            let historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v2') || '[]');
+            let historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v3') || '[]');
             historyArray = historyArray.filter(x => x.id !== id);
-            localStorage.setItem('fashionAppHistoryJSON_v2', JSON.stringify(historyArray));
+            localStorage.setItem('fashionAppHistoryJSON_v3', JSON.stringify(historyArray));
             renderHistory();
         }
 
         function clearHistory() {
-            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v2') || '[]');
+            const historyArray = JSON.parse(localStorage.getItem('fashionAppHistoryJSON_v3') || '[]');
             if (historyArray.length === 0) return;
             if (confirm("確定要清空所有紀錄嗎？")) {
-                localStorage.removeItem('fashionAppHistoryJSON_v2');
+                localStorage.removeItem('fashionAppHistoryJSON_v3');
                 renderHistory();
             }
         }
