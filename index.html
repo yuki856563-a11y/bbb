@@ -122,7 +122,7 @@
                         <div id="uploadPrompt" class="space-y-3 pointer-events-none">
                             <i class="fa-regular fa-image text-4xl text-slate-300"></i>
                             <p class="text-slate-600 font-medium">點擊上傳，或 <kbd class="bg-white border border-slate-200 shadow-sm px-2 py-1 rounded text-xs mx-1 font-mono">Ctrl+V</kbd> 貼上截圖</p>
-                            <p class="text-xs text-slate-400">支援 JPG, PNG 格式</p>
+                            <p class="text-xs text-slate-400">支援 JPG, PNG 格式（會自動壓縮大圖片）</p>
                         </div>
 
                         <div id="imagePreviewContainer" class="hidden w-full relative">
@@ -169,8 +169,8 @@
                     <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                         <h2 class="text-lg font-bold flex items-center text-slate-800">衣櫥分類紀錄</h2>
                         <div class="space-x-2">
-                            <button onclick="resetApiKey()" class="text-xs text-slate-400 hover:text-blue-500 transition-colors font-medium"><i class="fa-solid fa-lock mr-1"></i>重設金鑰</button>
-                            <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-red-500 transition-colors font-medium"><i class="fa-solid fa-trash-can mr-1"></i>清空全部</button>
+                            <button onclick="resetApiKey()" class="text-xs text-slate-400 hover:text-blue-500 transition-colors font-medium"><i class="fa-solid fa-lock mr-1"></i>重設</button>
+                            <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-red-500 transition-colors font-medium"><i class="fa-solid fa-trash-can mr-1"></i>清空</button>
                         </div>
                     </div>
                     <div id="historyList" class="flex-grow overflow-y-auto custom-scrollbar pr-2"></div>
@@ -207,7 +207,7 @@
                 document.execCommand('copy');
                 showToast('✅ 關鍵字複製成功！');
                 const old = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-check mr-1"></i>已複製';
+                btn.innerHTML = '已複製';
                 setTimeout(() => btn.innerHTML = old, 2000);
             } catch (e) {
                 showToast('❌ 複製失敗', true);
@@ -275,15 +275,45 @@
             if (file) processImageFile(file);
         }
 
+        // 新增：加入圖片壓縮功能，避免圖片太大導致 AI 無法辨識報錯
         function processImageFile(file) {
-            if (!file.type.match('image.*')) return;
+            if (!file.type.match('image.*')) {
+                showToast('⚠️ 請上傳正確的圖片檔案', true);
+                return;
+            }
+            
             const reader = new FileReader();
             reader.onload = function(e) {
-                selectedImageBase64 = e.target.result.split(',')[1];
-                selectedImageMimeType = file.type;
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('imagePreviewContainer').classList.remove('hidden');
-                document.getElementById('uploadPrompt').classList.add('hidden');
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_SIZE = 1024; // 壓縮圖片最大邊長為 1024px，兼顧解析度與 API 限制
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height && width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
+                    } else if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // 轉換回 Base64，品質設定為 80%
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    selectedImageBase64 = dataUrl.split(',')[1];
+                    selectedImageMimeType = 'image/jpeg';
+                    
+                    document.getElementById('imagePreview').src = dataUrl;
+                    document.getElementById('imagePreviewContainer').classList.remove('hidden');
+                    document.getElementById('uploadPrompt').classList.add('hidden');
+                };
+                img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
@@ -295,9 +325,48 @@
             document.getElementById('uploadPrompt').classList.remove('hidden');
         }
 
+        // 將替換邏輯獨立出來，共用於「初次搜尋」與「查看歷史紀錄」
+        function formatAnalysisResult(text) {
+            let formatted = text;
+            formatted = formatted.replace(/(🌟 【整體風格】|👗 【單品.*?】)/g, '<h3 class="text-slate-800 font-bold text-lg mt-6 mb-3 border-b pb-2">$1</h3>');
+            formatted = formatted.replace(/- 分類：(.*)/g, '<div class="mt-2 text-sm"><span class="font-bold text-slate-400">分類：</span>$1</div>');
+            formatted = formatted.replace(/- 最低估價：(.*)/g, '<div class="mt-1 text-sm"><span class="font-bold text-slate-400">估價：</span>NT$ $1</div>');
+            formatted = formatted.replace(/- 特徵：(.*)/g, '<div class="mt-1 text-sm mb-4"><span class="font-bold text-slate-400">特徵：</span>$1</div>');
+            
+            const renderBtn = (type, icon, cls, label) => {
+                const regex = new RegExp(`${type}關鍵字：(.*)`, 'g');
+                formatted = formatted.replace(regex, (match, keyword) => {
+                    const cleanKeyword = keyword.trim();
+                    // 新增：Google 搜尋連結
+                    const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(cleanKeyword)}`;
+                    
+                    return `
+                    <div class="tier-card ${cls} p-3 rounded-lg mb-2 flex flex-col sm:flex-row sm:items-center justify-between shadow-sm border border-slate-100 gap-3">
+                        <div class="flex-grow min-w-0">
+                            <div class="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1"><i class="fa-solid ${icon} mr-1"></i>${label}</div>
+                            <div class="text-sm font-bold text-slate-700 truncate" title="${cleanKeyword}">${cleanKeyword}</div>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <button onclick="copyKeyword(this, '${cleanKeyword}')" class="bg-slate-200 text-slate-700 hover:bg-slate-300 px-3 py-1.5 rounded text-xs font-medium transition-colors shadow-sm whitespace-nowrap">複製</button>
+                            <a href="${searchUrl}" target="_blank" class="bg-slate-900 text-white hover:bg-slate-800 px-3 py-1.5 rounded text-xs font-medium transition-colors shadow-sm flex items-center whitespace-nowrap">
+                                <i class="fa-solid fa-magnifying-glass mr-1.5"></i>去搜尋
+                            </a>
+                        </div>
+                    </div>`;
+                });
+            };
+
+            renderBtn('👑 正版', 'fa-crown', 'tier-authentic', 'Authentic');
+            renderBtn('💎 平替', 'fa-gem', 'tier-replica', 'Best Value');
+            renderBtn('🏷️ 類似', 'fa-tag', 'tier-similar', 'Similar');
+
+            formatted = formatted.replace(/---/g, '<div class="my-6 border-t border-slate-100"></div>');
+            return formatted;
+        }
+
         async function startAnalysis() {
             if (!checkAndGetApiKey()) return;
-            if (!selectedImageBase64) { alert("請先上傳圖片！"); return; }
+            if (!selectedImageBase64) { showToast("⚠️ 請先上傳圖片！", true); return; }
 
             const btnText = document.getElementById('btnText');
             const resultArea = document.getElementById('resultArea');
@@ -305,7 +374,7 @@
 
             analyzeBtn.disabled = true;
             btnText.innerHTML = `正在執行全網檢索<span class="loading-dots"></span>`;
-            resultArea.innerHTML = `<div class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>分析中...</div>`;
+            resultArea.innerHTML = `<div class="py-10 text-center text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-2"></i>AI 正在辨識您的單品...</div>`;
 
             const promptText = `
                 你是一位穿搭分析師。請拆解圖片中的「單品」。
@@ -336,35 +405,41 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        contents: [{ parts: [{ text: promptText + (document.getElementById('userInputText').value || "") }, { inlineData: { mimeType: selectedImageMimeType, data: selectedImageBase64 } }] }]
+                        contents: [{ 
+                            role: "user",
+                            parts: [
+                                { text: promptText + (document.getElementById('userInputText').value || "") }, 
+                                { inlineData: { mimeType: selectedImageMimeType, data: selectedImageBase64 } }
+                            ] 
+                        }],
+                        safetySettings: [
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+                        ]
                     })
                 });
                 
                 const data = await response.json();
+                
+                // 新增：強化錯誤防護與解析 API 實際錯誤訊息
+                if (!response.ok) {
+                    throw new Error(data.error?.message || "API 請求失敗，請檢查金鑰是否正確");
+                }
+                if (data.promptFeedback && data.promptFeedback.blockReason) {
+                    throw new Error("圖片可能被 AI 安全機制阻擋，請換一張照片試試看！");
+                }
+                if (!data.candidates || data.candidates.length === 0) {
+                    throw new Error("AI 無法辨識此圖片內容，請換一張照片試試看！");
+                }
+
                 currentAnalysisResult = data.candidates[0].content.parts[0].text;
-                
-                let formatted = currentAnalysisResult;
-                formatted = formatted.replace(/(🌟 【整體風格】|👗 【單品.*?】)/g, '<h3 class="text-slate-800 font-bold text-lg mt-6 mb-3 border-b pb-2">$1</h3>');
-                formatted = formatted.replace(/- 分類：(.*)/g, '<div class="mt-2 text-sm"><span class="font-bold text-slate-400">分類：</span>$1</div>');
-                formatted = formatted.replace(/- 最低估價：(.*)/g, '<div class="mt-1 text-sm"><span class="font-bold text-slate-400">估價：</span>NT$ $1</div>');
-                formatted = formatted.replace(/- 特徵：(.*)/g, '<div class="mt-1 text-sm mb-4"><span class="font-bold text-slate-400">特徵：</span>$1</div>');
-                
-                // 渲染 3 個關鍵字區塊
-                const renderBtn = (type, icon, cls, label) => {
-                    const regex = new RegExp(`${type}關鍵字：(.*)`, 'g');
-                    formatted = formatted.replace(regex, `<div class="tier-card ${cls} p-3 rounded-lg mb-2 flex justify-between items-center shadow-sm border border-slate-100"><div class="flex-grow truncate mr-2"><div class="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1"><i class="fa-solid ${icon} mr-1"></i>${label}</div><div class="text-sm font-bold text-slate-700 truncate">$1</div></div><button onclick="copyKeyword(this, '$1')" class="bg-slate-800 text-white px-3 py-1.5 rounded text-xs whitespace-nowrap shadow-md active:scale-95">複製關鍵字</button></div>`);
-                };
-
-                renderBtn('👑 正版', 'fa-crown', 'tier-authentic', 'Authentic');
-                renderBtn('💎 平替', 'fa-gem', 'tier-replica', 'Best Value');
-                renderBtn('🏷️ 類似', 'fa-tag', 'tier-similar', 'Similar');
-
-                formatted = formatted.replace(/---/g, '<div class="my-6 border-t border-slate-100"></div>');
-                
-                resultArea.innerHTML = formatted;
+                resultArea.innerHTML = formatAnalysisResult(currentAnalysisResult);
                 saveToHistory();
+
             } catch (err) {
-                resultArea.innerHTML = `<div class="p-4 bg-red-50 text-red-500 rounded">發生錯誤：${err.message}</div>`;
+                resultArea.innerHTML = `<div class="p-5 bg-red-50 text-red-600 rounded-xl border border-red-100 shadow-sm flex flex-col items-center text-center"><i class="fa-solid fa-circle-exclamation text-2xl mb-2"></i><b>糟糕！發生了一點錯誤</b><span class="text-sm mt-1 opacity-80">${err.message}</span></div>`;
             } finally {
                 analyzeBtn.disabled = false;
                 btnText.innerText = "開始搜尋同款";
@@ -374,10 +449,13 @@
         function saveToHistory() {
             if (!currentAnalysisResult) return;
             const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
-            const firstItemMatch = currentAnalysisResult.match(/👗 【單品一：(.*?)】/);
+            const firstItemMatch = currentAnalysisResult.match(/👗\s*【單品.*?：(.*?)】/);
             const title = firstItemMatch ? firstItemMatch[1] : "新搜尋紀錄";
             const catMatch = currentAnalysisResult.match(/- 分類：(.*?)\n/);
             const priceMatch = currentAnalysisResult.match(/- 最低估價：(\d+)/);
+
+            // 避免重複儲存相同的結果
+            if(historyArray.length > 0 && historyArray[0].content === currentAnalysisResult) return;
 
             historyArray.unshift({
                 id: Date.now(),
@@ -413,24 +491,9 @@
             const historyArray = JSON.parse(localStorage.getItem('fashionAppHistory') || '[]');
             const item = historyArray.find(x => x.id === id);
             if (item) {
-                // 重複一次渲染邏輯
-                let formatted = item.content;
-                formatted = formatted.replace(/(🌟 【整體風格】|👗 【單品.*?】)/g, '<h3 class="text-slate-800 font-bold text-lg mt-6 mb-3 border-b pb-2">$1</h3>');
-                formatted = formatted.replace(/- 分類：(.*)/g, '<div class="mt-2 text-sm"><span class="font-bold text-slate-400">分類：</span>$1</div>');
-                formatted = formatted.replace(/- 最低估價：(.*)/g, '<div class="mt-1 text-sm"><span class="font-bold text-slate-400">估價：</span>NT$ $1</div>');
-                formatted = formatted.replace(/- 特徵：(.*)/g, '<div class="mt-1 text-sm mb-4"><span class="font-bold text-slate-400">特徵：</span>$1</div>');
-                
-                const renderBtnView = (type, icon, cls, label) => {
-                    const regex = new RegExp(`${type}關鍵字：(.*)`, 'g');
-                    formatted = formatted.replace(regex, `<div class="tier-card ${cls} p-3 rounded-lg mb-2 flex justify-between items-center shadow-sm border border-slate-100"><div class="flex-grow truncate mr-2"><div class="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1"><i class="fa-solid ${icon} mr-1"></i>${label}</div><div class="text-sm font-bold text-slate-700 truncate">$1</div></div><button onclick="copyKeyword(this, '$1')" class="bg-slate-800 text-white px-3 py-1.5 rounded text-xs whitespace-nowrap shadow-md active:scale-95">複製關鍵字</button></div>`);
-                };
-
-                renderBtnView('👑 正版', 'fa-crown', 'tier-authentic', 'Authentic');
-                renderBtnView('💎 平替', 'fa-gem', 'tier-replica', 'Best Value');
-                renderBtnView('🏷️ 類似', 'fa-tag', 'tier-similar', 'Similar');
-                formatted = formatted.replace(/---/g, '<div class="my-6 border-t border-slate-100"></div>');
-
-                document.getElementById('resultArea').innerHTML = `<div class="mb-4 bg-slate-50 p-2 text-[10px] font-bold text-slate-400 rounded">檢視歷史紀錄</div>` + formatted;
+                document.getElementById('resultArea').innerHTML = `<div class="mb-4 bg-slate-50 p-2 text-[10px] font-bold text-slate-400 rounded-md inline-block shadow-sm"><i class="fa-solid fa-clock-rotate-left mr-1"></i>正在檢視歷史紀錄</div>` + formatAnalysisResult(item.content);
+                // 畫面捲動到分析報告區塊
+                document.getElementById('resultArea').parentElement.scrollIntoView({ behavior: 'smooth' });
             }
         }
 
