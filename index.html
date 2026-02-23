@@ -102,7 +102,7 @@
             <div>
                 <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight flex items-center">
                     <i class="fa-solid fa-layer-group text-slate-400 mr-3 text-2xl"></i>搜搜穿搭
-                    <span class="ml-4 text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold shadow-sm border border-blue-200 tracking-normal">v2.0 穩定版</span>
+                    <span class="ml-4 text-sm bg-blue-100 text-blue-700 px-3 py-1 rounded-full font-bold shadow-sm border border-blue-200 tracking-normal">v2.1 智慧尋軌版</span>
                 </h1>
             </div>
         </header>
@@ -398,32 +398,54 @@
             `;
 
             try {
-                // 這裡確保使用的是穩定的 gemini-1.5-flash 模型
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ 
-                            role: "user",
-                            parts: [
-                                { text: promptText + (document.getElementById('userInputText').value || "") }, 
-                                { inlineData: { mimeType: selectedImageMimeType, data: selectedImageBase64 } }
-                            ] 
-                        }],
-                        safetySettings: [
-                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
-                        ]
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (!response.ok) {
-                    throw new Error(data.error?.message || "API 請求失敗，請檢查金鑰是否正確");
+                // 建立智慧備用模型清單，自動尋找您的金鑰支援的模型
+                const modelsToTry = ['gemini-1.5-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-pro', 'gemini-1.5-pro-latest', 'gemini-pro-vision'];
+                let apiResponse = null;
+                let data = null;
+
+                for (const modelName of modelsToTry) {
+                    try {
+                        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                contents: [{ 
+                                    role: "user",
+                                    parts: [
+                                        { text: promptText + (document.getElementById('userInputText').value || "") }, 
+                                        { inlineData: { mimeType: selectedImageMimeType, data: selectedImageBase64 } }
+                                    ] 
+                                }],
+                                safetySettings: [
+                                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+                                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+                                ]
+                            })
+                        });
+                        
+                        const resData = await res.json();
+                        
+                        // 如果這個模型成功了，就儲存結果並跳出迴圈
+                        if (res.ok) {
+                            apiResponse = res;
+                            data = resData;
+                            break; 
+                        } else {
+                            // 紀錄錯誤，繼續嘗試名單上的下一個模型
+                            data = resData;
+                        }
+                    } catch (e) {
+                        console.error(`連線 ${modelName} 發生異常:`, e);
+                    }
                 }
+
+                // 如果全部模型都失敗了
+                if (!apiResponse || !apiResponse.ok) {
+                    throw new Error(data?.error?.message || "API 請求失敗，請確認您的金鑰是否有效或過期。");
+                }
+
                 if (data.promptFeedback && data.promptFeedback.blockReason) {
                     throw new Error("圖片可能被 AI 安全機制阻擋，請換一張照片試試看！");
                 }
